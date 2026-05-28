@@ -27,6 +27,12 @@ android {
 }
 
 dependencies {
+    // Source: https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
+    // Source: https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation("org.slf4j:slf4j-api:2.0.17")
+    // Source: https://mvnrepository.com/artifact/uk.uuid.slf4j/slf4j-android
+    implementation("uk.uuid.slf4j:slf4j-android:2.0.17-0")
     testImplementation 'junit:junit:4.13.2'
 }
 
