@@ -1,5 +1,9 @@
 package com.genymobile.scrcpy;
 
+import android.annotation.SuppressLint;
+import android.os.Build;
+import android.os.Looper;
+
 import com.genymobile.scrcpy.audio.AudioCapture;
 import com.genymobile.scrcpy.audio.AudioCodec;
 import com.genymobile.scrcpy.audio.AudioDirectCapture;
@@ -23,10 +27,7 @@ import com.genymobile.scrcpy.video.ScreenCapture;
 import com.genymobile.scrcpy.video.SurfaceCapture;
 import com.genymobile.scrcpy.video.SurfaceEncoder;
 import com.genymobile.scrcpy.video.VideoSource;
-
-import android.annotation.SuppressLint;
-import android.os.Build;
-import android.os.Looper;
+import com.genymobile.scrcpy.ws.WSServer;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,25 +43,6 @@ public final class Server {
         String[] classPaths = System.getProperty("java.class.path").split(File.pathSeparator);
         // By convention, scrcpy is always executed with the absolute path of scrcpy-server.jar as the first item in the classpath
         SERVER_PATH = classPaths[0];
-    }
-
-    private static class Completion {
-        private int running;
-        private boolean fatalError;
-
-        Completion(int running) {
-            this.running = running;
-        }
-
-        synchronized void addCompleted(boolean fatalError) {
-            --running;
-            if (fatalError) {
-                this.fatalError = true;
-            }
-            if (running == 0 || this.fatalError) {
-                Looper.getMainLooper().quitSafely();
-            }
-        }
     }
 
     private Server() {
@@ -267,10 +249,38 @@ public final class Server {
             return;
         }
 
+        // Apply workarounds and initialize the fake context in the main thread
+        // where a Looper is already prepared.
+        Workarounds.apply();
         try {
-            scrcpy(options);
+            if (options.getServerType() == ServerType.LOCAL_SOCKET) {
+                scrcpy(options);
+            } else if (options.getServerType() == ServerType.WEB_SOCKET) {
+                WSServer wsServer = new WSServer(options);
+                wsServer.setReuseAddr(true);
+                wsServer.run();
+            }
         } catch (ConfigurationException e) {
             // Do not print stack trace, a user-friendly error-message has already been logged
+        }
+    }
+
+    private static class Completion {
+        private int running;
+        private boolean fatalError;
+
+        Completion(int running) {
+            this.running = running;
+        }
+
+        synchronized void addCompleted(boolean fatalError) {
+            --running;
+            if (fatalError) {
+                this.fatalError = true;
+            }
+            if (running == 0 || this.fatalError) {
+                Looper.getMainLooper().quitSafely();
+            }
         }
     }
 }

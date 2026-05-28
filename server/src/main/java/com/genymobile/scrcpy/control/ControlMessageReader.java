@@ -1,25 +1,37 @@
 package com.genymobile.scrcpy.control;
 
 import com.genymobile.scrcpy.device.Position;
+import com.genymobile.scrcpy.util.AndroidApiCompatibilityUtils;
 import com.genymobile.scrcpy.util.Binary;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class ControlMessageReader {
 
-    private static final int MESSAGE_MAX_SIZE = 1 << 18; // 256k
-
-    public static final int CLIPBOARD_TEXT_MAX_LENGTH = MESSAGE_MAX_SIZE - 14; // type: 1 byte; sequence: 8 bytes; paste flag: 1 byte; length: 4 bytes
     public static final int INJECT_TEXT_MAX_LENGTH = 300;
-
+    private static final int MESSAGE_MAX_SIZE = 1 << 18; // 256k
+    public static final int CLIPBOARD_TEXT_MAX_LENGTH = MESSAGE_MAX_SIZE - 14; // type: 1 byte; sequence: 8 bytes; paste flag: 1 byte; length: 4 bytes
     private final DataInputStream dis;
 
     public ControlMessageReader(InputStream rawInputStream) {
         dis = new DataInputStream(new BufferedInputStream(rawInputStream));
+    }
+
+    public static ControlMessage parse(ByteBuffer buffer) {
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        ControlMessageReader reader = new ControlMessageReader(new ByteArrayInputStream(bytes));
+        try {
+            return reader.read();
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     public ControlMessage read() throws IOException {
@@ -56,6 +68,10 @@ public class ControlMessageReader {
                 return parseUhidDestroy();
             case ControlMessage.TYPE_START_APP:
                 return parseStartApp();
+            case ControlMessage.TYPE_CHANGE_STREAM_PARAMETERS:
+                return parseChangeStreamParameters();
+            case ControlMessage.TYPE_PUSH_FILE:
+                return parseFilePush();
             default:
                 throw new ControlProtocolException("Unknown event type: " + type);
         }
@@ -172,5 +188,15 @@ public class ControlMessageReader {
         int screenWidth = dis.readUnsignedShort();
         int screenHeight = dis.readUnsignedShort();
         return new Position(x, y, screenWidth, screenHeight);
+    }
+
+    private ControlMessage parseChangeStreamParameters() throws IOException {
+        byte[] videoSettingsBytes = AndroidApiCompatibilityUtils.readAllBytes(dis);
+        return ControlMessage.createChangeStreamParameters(videoSettingsBytes);
+    }
+
+    private ControlMessage parseFilePush() throws IOException {
+        byte[] filePushBytes = AndroidApiCompatibilityUtils.readAllBytes(dis);
+        return ControlMessage.createFilePush(filePushBytes);
     }
 }

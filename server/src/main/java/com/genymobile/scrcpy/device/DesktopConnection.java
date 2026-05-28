@@ -1,21 +1,19 @@
 package com.genymobile.scrcpy.device;
 
-import com.genymobile.scrcpy.control.ControlChannel;
-import com.genymobile.scrcpy.util.IO;
-import com.genymobile.scrcpy.util.StringUtils;
 
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 
-import java.io.Closeable;
+import com.genymobile.scrcpy.control.ControlChannel;
+import com.genymobile.scrcpy.util.IO;
+import com.genymobile.scrcpy.util.StringUtils;
+
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-public final class DesktopConnection implements Closeable {
-
-    private static final int DEVICE_NAME_FIELD_LENGTH = 64;
+public final class DesktopConnection extends Connection {
 
     private static final String SOCKET_NAME_PREFIX = "scrcpy";
 
@@ -35,7 +33,7 @@ public final class DesktopConnection implements Closeable {
 
         videoFd = videoSocket != null ? videoSocket.getFileDescriptor() : null;
         audioFd = audioSocket != null ? audioSocket.getFileDescriptor() : null;
-        controlChannel = controlSocket != null ? new ControlChannel(controlSocket) : null;
+        controlChannel = controlSocket != null ? new ControlChannel(controlSocket.getInputStream(), controlSocket.getOutputStream()) : null;
     }
 
     private static LocalSocket connect(String abstractName) throws IOException {

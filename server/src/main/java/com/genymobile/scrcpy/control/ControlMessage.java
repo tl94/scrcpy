@@ -1,6 +1,11 @@
 package com.genymobile.scrcpy.control;
 
 import com.genymobile.scrcpy.device.Position;
+import com.genymobile.scrcpy.util.Ln;
+import com.genymobile.scrcpy.video.VideoSettings;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Union of all supported event types, identified by their {@code type}.
@@ -25,12 +30,22 @@ public final class ControlMessage {
     public static final int TYPE_OPEN_HARD_KEYBOARD_SETTINGS = 15;
     public static final int TYPE_START_APP = 16;
     public static final int TYPE_RESET_VIDEO = 17;
+    public static final int TYPE_CHANGE_STREAM_PARAMETERS = 101;
+    public static final int TYPE_PUSH_FILE = 102;
 
     public static final long SEQUENCE_INVALID = 0;
 
     public static final int COPY_KEY_NONE = 0;
     public static final int COPY_KEY_COPY = 1;
     public static final int COPY_KEY_CUT = 2;
+
+    // File push states
+    public static final int PUSH_STATE_NEW = 0;
+    public static final int PUSH_STATE_START = 1;
+    public static final int PUSH_STATE_APPEND = 2;
+    public static final int PUSH_STATE_FINISH = 3;
+    public static final int PUSH_STATE_CANCEL = 4;
+
 
     private int type;
     private String text;
@@ -53,6 +68,15 @@ public final class ControlMessage {
     private boolean on;
     private int vendorId;
     private int productId;
+    //  Video settings
+    private VideoSettings videoSettings;
+    //  File push
+    private short pushId;
+    private int pushState;
+    private byte[] pushChunk;
+    private int pushChunkSize;
+    private int fileSize;
+    private String fileName;
 
     private ControlMessage() {
     }
@@ -75,7 +99,7 @@ public final class ControlMessage {
     }
 
     public static ControlMessage createInjectTouchEvent(int action, long pointerId, Position position, float pressure, int actionButton,
-            int buttons) {
+                                                        int buttons) {
         ControlMessage msg = new ControlMessage();
         msg.type = TYPE_INJECT_TOUCH_EVENT;
         msg.action = action;
@@ -166,6 +190,49 @@ public final class ControlMessage {
         return msg;
     }
 
+    public static ControlMessage createChangeStreamParameters(byte[] videoSettingsBytes) {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_CHANGE_STREAM_PARAMETERS;
+        msg.videoSettings = VideoSettings.fromByteArray(videoSettingsBytes);
+        return msg;
+    }
+
+    public static ControlMessage createFilePush(byte[] bytes) {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_PUSH_FILE;
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        msg.pushId = buffer.getShort();
+        msg.pushState = buffer.get();
+        switch (msg.pushState) {
+            case PUSH_STATE_START:
+                msg.fileSize = buffer.getInt();
+                short nameLength = buffer.getShort();
+                byte[] textBuffer = new byte[nameLength];
+                buffer.get(textBuffer, 0, nameLength);
+                msg.fileName = new String(textBuffer, 0, nameLength, StandardCharsets.UTF_8);
+                break;
+            case PUSH_STATE_APPEND:
+                int chunkSize = buffer.getInt();
+                byte[] chunk = new byte[chunkSize];
+                if (buffer.remaining() >= chunkSize) {
+                    buffer.get(chunk, 0, chunkSize);
+                    msg.pushChunkSize = chunkSize;
+                    msg.pushChunk = chunk;
+                } else {
+                    msg.pushState = PUSH_STATE_CANCEL;
+                }
+                break;
+            case PUSH_STATE_NEW:
+            case PUSH_STATE_CANCEL:
+            case PUSH_STATE_FINISH:
+                break;
+            default:
+                Ln.w("Unknown push event state: " + msg.pushState);
+                return null;
+        }
+        return msg;
+    }
+
     public int getType() {
         return type;
     }
@@ -248,5 +315,33 @@ public final class ControlMessage {
 
     public int getProductId() {
         return productId;
+    }
+
+    public VideoSettings getVideoSettings() {
+        return videoSettings;
+    }
+
+    public short getPushId() {
+        return pushId;
+    }
+
+    public int getPushState() {
+        return pushState;
+    }
+
+    public byte[] getPushChunk() {
+        return pushChunk;
+    }
+
+    public int getPushChunkSize() {
+        return pushChunkSize;
+    }
+
+    public int getFileSize() {
+        return fileSize;
+    }
+
+    public String getFileName() {
+        return fileName;
     }
 }
