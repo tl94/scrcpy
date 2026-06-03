@@ -23,11 +23,14 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashSet;
 
 public class WebSocketConnection extends Connection {
-    private static final byte[] MAGIC_BYTES_INITIAL = "scrcpy_initial".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] MAGIC_BYTES_MESSAGE = "scrcpy_message".getBytes(StandardCharsets.UTF_8);
+    private static final byte CHANNEL_VIDEO = 1;
+    private static final byte CHANNEL_AUDIO = 2;
+    private static final byte CHANNEL_CONTROL = 3;
+    private static final int PIPE_SIZE = 64 * 1024;
     private static final byte[] DEVICE_NAME_BYTES = Device.getDeviceName().getBytes(StandardCharsets.UTF_8);
     private static final long PACKET_FLAG_CONFIG = 1L << 63;
     private final HashSet<WebSocket> sockets = new HashSet<>();
@@ -35,7 +38,7 @@ public class WebSocketConnection extends Connection {
     private final ParcelFileDescriptor audioPipeRead, audioPipeWrite;
     private final ParcelFileDescriptor controlPipeReverseRead, controlPipeReverseWrite;
     private final PipedOutputStream controlOutputStream = new PipedOutputStream();
-    private final PipedInputStream controlInputStream = new PipedInputStream(controlOutputStream);
+    private final PipedInputStream controlInputStream = new PipedInputStream(controlOutputStream, PIPE_SIZE);
     private final ControlChannel controlChannel;
     private final VideoSettings videoSettings;
     private byte[] cachedCodecHeader;
@@ -78,9 +81,9 @@ public class WebSocketConnection extends Connection {
     }
 
     public static ByteBuffer deviceMessageToByteBuffer(DeviceMessage msg) {
-        byte[] raw = msg.writeToByteArray(MAGIC_BYTES_MESSAGE.length);
+        byte[] raw = msg.writeToByteArray(1);
         ByteBuffer buffer = ByteBuffer.wrap(raw);
-        buffer.put(MAGIC_BYTES_MESSAGE);
+        buffer.put(CHANNEL_CONTROL);
         buffer.rewind();
         return buffer;
     }
@@ -135,10 +138,17 @@ public class WebSocketConnection extends Connection {
                         }
                     }
 
-                    broadcast(ByteBuffer.wrap(packetData));
+                    // 4. Add channel type byte
+                    ByteBuffer buffer = ByteBuffer.allocate(1 + size);
+                    buffer.put(CHANNEL_VIDEO);
+                    buffer.put(packetData);
+                    buffer.rewind();
+
+                    broadcast(buffer);
                 }
             } catch (IOException e) {
                 Ln.d("Video stream closed");
+                Ln.d(e.getMessage());
             }
         }, name).start();
     }
@@ -181,16 +191,17 @@ public class WebSocketConnection extends Connection {
                     // 3. Now we have a single, complete DeviceMessage in 'bos'
                     byte[] messageBytes = bos.toByteArray();
 
-                    // 4. Prepend MAGIC_BYTES and broadcast as ONE WebSocket frame
-                    ByteBuffer buffer = ByteBuffer.allocate(MAGIC_BYTES_MESSAGE.length + messageBytes.length);
-                    buffer.put(MAGIC_BYTES_MESSAGE);
+                    // 4. Add channel type byte and broadcast as one WebSocket frame
+                    ByteBuffer buffer = ByteBuffer.allocate(1 + messageBytes.length);
+                    buffer.put(CHANNEL_CONTROL);
                     buffer.put(messageBytes);
                     buffer.rewind();
 
                     broadcast(buffer);
                 }
             } catch (IOException e) {
-                // Pipe closed when session stopped
+                Ln.d("Control stream closed");
+                Ln.d(e.getMessage());
             }
         }, name).start();
     }
@@ -207,7 +218,6 @@ public class WebSocketConnection extends Connection {
 
     public void addSocket(WebSocket socket) {
         Ln.d("Adding new socket");
-        Ln.v("a lil extra");
         synchronized (sockets) {
 //             Send the most recent SPS/PPS so the browser can start immediately
             if (cachedConfigPacket != null) {
@@ -239,6 +249,7 @@ public class WebSocketConnection extends Connection {
         byte[] bytes = new byte[data.remaining()];
         data.get(bytes);
         controlOutputStream.write(bytes);
+        controlOutputStream.flush();
     }
 
     @Override

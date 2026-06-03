@@ -697,7 +697,8 @@ public class Options {
     public String toString() {
         return "Options{"
                 + "maxSize=" + maxSize
-                + ", bitRate=" + audioBitRate
+                + ", videoBitRate=" + videoBitRate
+                + ", audioBitRate=" + audioBitRate
                 + ", maxFps=" + maxFps
                 + ", tunnelForward=" + tunnelForward
                 + ", crop=" + crop

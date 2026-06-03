@@ -37,10 +37,8 @@ public class WSServer extends WebSocketServer {
     public static final int DEVICE_NAME_FIELD_LENGTH = 64;
     private static final String PID_FILE_PATH = "/data/local/tmp/ws_scrcpy.pid";
     private static final HashMap<Integer, WsScrcpySession> SESSION_BY_DISPLAY_ID = new HashMap<>();
-    private static final byte[] MAGIC_BYTES_INITIAL = "scrcpy_initial".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] MAGIC_BYTES_MESSAGE = "scrcpy_message".getBytes(StandardCharsets.UTF_8);
+    private static final byte CHANNEL_SPECIAL_INITIAL = 0;
     private static final byte[] DEVICE_NAME_BYTES = Device.getDeviceName().getBytes(StandardCharsets.UTF_8);
-    private static final int CLIENT_ID_OFFSET = MAGIC_BYTES_INITIAL.length + DEVICE_NAME_FIELD_LENGTH + 4;
     private final Options options;
 
     public WSServer(Options options) {
@@ -277,10 +275,9 @@ public class WSServer extends WebSocketServer {
         return buffer.array();
     }
 
-    // TODO: make sure that all the data is the same as before in terms of size and arrangement, etc.
     @SuppressWarnings("checkstyle:MagicNumber")
     public ByteBuffer getInitialInfo() {
-        int baseLength = MAGIC_BYTES_INITIAL.length
+        int baseLength = 1 // CHANNEL_SPECIAL_INITIAL tag
                 + DEVICE_NAME_FIELD_LENGTH
                 + 4                          // displays count
                 + 4;                         // client id
@@ -313,7 +310,7 @@ public class WSServer extends WebSocketServer {
             }
         }
 
-//      TODO:  hardcoded encoders for now
+//      TODO:  hardcoded encoders as before for now
         MediaCodecInfo[] encoders = CodecUtils.getEncoders(new MediaCodecList(MediaCodecList.REGULAR_CODECS), MediaFormat.MIMETYPE_VIDEO_AVC);
         List<byte[]> encodersNames = new ArrayList<>();
         if (encoders != null && encoders.length > 0) {
@@ -327,9 +324,9 @@ public class WSServer extends WebSocketServer {
 
         byte[] fullBytes = new byte[baseLength + additionalLength];
         ByteBuffer initialInfo = ByteBuffer.wrap(fullBytes);
-        initialInfo.put(MAGIC_BYTES_INITIAL);
+        initialInfo.put(CHANNEL_SPECIAL_INITIAL);
         initialInfo.put(DEVICE_NAME_BYTES, 0, Math.min(DEVICE_NAME_FIELD_LENGTH - 1, DEVICE_NAME_BYTES.length));
-        initialInfo.position(MAGIC_BYTES_INITIAL.length + DEVICE_NAME_FIELD_LENGTH);
+        initialInfo.position(1 + DEVICE_NAME_FIELD_LENGTH);
         initialInfo.putInt(displayIds.length);
         for (DisplayInfo displayInfo : displayInfoHashMap.values()) {
             int displayId = displayInfo.getDisplayId();
