@@ -100,10 +100,6 @@ public class WebSocketConnection extends Connection {
         }
     }
 
-    private void startAudioBroadcastThread(ParcelFileDescriptor pfd, String name) {
-//        TODO
-    }
-
     private void startVideoBroadcastThread(ParcelFileDescriptor pfd, String name) {
         new Thread(() -> {
             try (DataInputStream dis = new DataInputStream(new FileInputStream(pfd.getFileDescriptor()))) {
@@ -148,6 +144,49 @@ public class WebSocketConnection extends Connection {
                 }
             } catch (IOException e) {
                 Ln.d("Video stream closed");
+                Ln.d(e.getMessage());
+            }
+        }, name).start();
+    }
+
+    private void startAudioBroadcastThread(ParcelFileDescriptor pfd, String name) {
+        new Thread(() -> {
+            try (DataInputStream dis = new DataInputStream(new FileInputStream(pfd.getFileDescriptor()))) {
+                // 1. Read initial codec header (4 bytes for audio)
+                // [Codec ID (4)]
+                byte[] codecHeader = new byte[4];
+                dis.readFully(codecHeader);
+                Ln.d("codecHeader: " + Arrays.toString(codecHeader));
+
+                ByteBuffer headerBuffer = ByteBuffer.allocate(1 + 4);
+                headerBuffer.put(CHANNEL_AUDIO);
+                headerBuffer.put(codecHeader);
+                headerBuffer.rewind();
+                broadcast(headerBuffer);
+//                headerBuffer = null;
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    // 2. Read frame metadata (12 bytes)
+                    long pts = dis.readLong();
+                    int size = dis.readInt();
+
+                    // 3. Read packet
+                    byte[] packetData = new byte[size];
+                    dis.readFully(packetData);
+
+                    // 4. Wrap with tag and broadcast
+                    ByteBuffer buffer = ByteBuffer.allocate(1 + 8 + 4 + size);
+                    buffer.put(CHANNEL_AUDIO);
+                    buffer.putLong(pts);
+                    buffer.putInt(size);
+                    buffer.put(packetData);
+                    buffer.rewind();
+
+                    broadcast(buffer);
+                }
+
+            } catch (IOException e) {
+                Ln.d("Audio stream closed");
                 Ln.d(e.getMessage());
             }
         }, name).start();
