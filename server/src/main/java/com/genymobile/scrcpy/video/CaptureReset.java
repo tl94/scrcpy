@@ -26,6 +26,10 @@ public class CaptureReset implements SurfaceCapture.CaptureListener {
         }
     }
 
+    public synchronized MediaCodec getRunningMediaCodec() {
+        return this.runningMediaCodec;
+    }
+
     public synchronized void setRunningMediaCodec(MediaCodec runningMediaCodec) {
         this.runningMediaCodec = runningMediaCodec;
     }

@@ -280,7 +280,7 @@ public class WebSocketConnection extends Connection {
     public void addSocket(WebSocket socket) {
         Ln.d("Adding new socket");
         synchronized (sockets) {
-//             Send the most recent SPS/PPS so the browser can start immediately
+            // Send the most recent SPS/PPS so the browser can start immediately
             if (cachedVideoStreamPacket != null) {
                 socket.send(cachedVideoStreamPacket.duplicate());
             }

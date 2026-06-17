@@ -285,6 +285,19 @@ public class SurfaceEncoder implements AsyncProcessor {
         return format;
     }
 
+    public void requestSyncFrame() {
+        MediaCodec codec = reset.getRunningMediaCodec();
+        if (codec != null) {
+            try {
+                android.os.Bundle b = new android.os.Bundle();
+                b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                codec.setParameters(b);
+            } catch (IllegalStateException e) {
+                // Codec may have stopped just as this was called
+            }
+        }
+    }
+
     @Override
     public void start(TerminationListener listener) {
         thread = new Thread(() -> {

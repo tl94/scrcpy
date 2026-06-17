@@ -50,6 +50,7 @@ public class WsScrcpySession {
             SurfaceCapture surfaceCapture = getSurfaceCapture(options);
             this.surfaceCapture = surfaceCapture;
             this.videoEncoder = new SurfaceEncoder(surfaceCapture, videoStreamer, options);
+            this.controller.setSurfaceCapture(this.surfaceCapture);
         } else {
             this.surfaceCapture = null;
             this.videoEncoder = null;
@@ -101,8 +102,12 @@ public class WsScrcpySession {
         if (isFirstClient) {
             this.start();
         } else {
-            Ln.d("requesting new keyframe");
-            requestKeyFrame();
+            Ln.d("requesting new i-frame for new client");
+
+            if (surfaceCapture != null) {
+                videoEncoder.requestSyncFrame();
+                surfaceCapture.requestInvalidate();
+            }
         }
 
         if (listener != null) {
@@ -143,13 +148,6 @@ public class WsScrcpySession {
             if (ap != null) {
                 ap.stop();
             }
-        }
-    }
-
-    private void requestKeyFrame() {
-        if (surfaceCapture != null) {
-            Ln.d("Video capture reset");
-            surfaceCapture.requestInvalidate();
         }
     }
 
