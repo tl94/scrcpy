@@ -154,7 +154,7 @@ public class WebSocketConnection extends Connection {
                 }
             } catch (IOException e) {
                 Ln.d("Video stream closed");
-                Ln.d(e.getMessage());
+                Ln.e(e.getMessage());
             }
         }, name).start();
     }
@@ -209,7 +209,7 @@ public class WebSocketConnection extends Connection {
 
             } catch (IOException e) {
                 Ln.d("Audio stream closed");
-                Ln.d(e.getMessage());
+                Ln.e(e.getMessage());
             }
         }, name).start();
     }
@@ -262,7 +262,7 @@ public class WebSocketConnection extends Connection {
                 }
             } catch (IOException e) {
                 Ln.d("Control stream closed");
-                Ln.d(e.getMessage());
+                Ln.e(e.getMessage());
             }
         }, name).start();
     }
