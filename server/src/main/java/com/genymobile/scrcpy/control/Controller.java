@@ -81,6 +81,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
     private final CleanUp cleanUp;
     private final DeviceMessageSender sender;
     private final boolean clipboardAutosync;
+    private final boolean wsClipboardAutosync;
     private final boolean powerOn;
 
     private final KeyCharacterMap charMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
@@ -105,6 +106,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
         this.controlChannel = controlChannel;
         this.cleanUp = cleanUp;
         this.clipboardAutosync = options.getClipboardAutosync();
+        this.wsClipboardAutosync = options.getWsClipboardAutosync();
         this.powerOn = options.getPowerOn();
         initPointers();
         sender = new DeviceMessageSender(controlChannel);
@@ -118,6 +120,27 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
         ClipboardManager clipboardManager = ServiceManager.getClipboardManager();
         if (clipboardAutosync) {
             // If control and autosync are enabled, synchronize Android clipboard to the computer automatically
+            if (clipboardManager != null) {
+                clipboardManager.addPrimaryClipChangedListener(() -> {
+                    if (isSettingClipboard.get()) {
+                        // This is a notification for the change we are currently applying, ignore it
+                        return;
+                    }
+                    String text = Device.getClipboardText();
+                    if (text != null) {
+                        DeviceMessage msg = DeviceMessage.createClipboard(text);
+                        sender.send(msg);
+                    }
+                });
+            } else {
+                Ln.w("No clipboard manager, copy-paste between device and computer will not work");
+            }
+        }
+
+        // use different condition for clipboard handling with multiple clients,
+        // local computer clipboard must not be autosynced
+        if (wsClipboardAutosync) {
+            // If control and wsClipboardAutosync are enabled, synchronize Android clipboard to the client automatically
             if (clipboardManager != null) {
                 clipboardManager.addPrimaryClipChangedListener(() -> {
                     if (isSettingClipboard.get()) {

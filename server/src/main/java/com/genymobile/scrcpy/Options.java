@@ -82,6 +82,8 @@ public class Options {
     private boolean sendDummyByte = true; // write a byte on start to detect connection issues
     private boolean sendCodecMeta = true; // write the codec metadata before the stream
 
+    private boolean wsClipboardAutosync = false;
+
     @SuppressWarnings("MethodLength")
     public static Options parse(String... args) {
         if (args.length < 1) {
@@ -321,6 +323,10 @@ public class Options {
                         options.sendDummyByte = false;
                         options.sendCodecMeta = false;
                     }
+                    break;
+                // ws-scrcpy-specific
+                case "ws_clipboard_autosync":
+                    options.wsClipboardAutosync = Boolean.parseBoolean(value);
                     break;
                 default:
                     Ln.w("Unknown server option: " + key);
@@ -675,6 +681,10 @@ public class Options {
 
     public boolean getListApps() {
         return listApps;
+    }
+
+    public boolean getWsClipboardAutosync() {
+        return wsClipboardAutosync;
     }
 
     public boolean getSendDeviceMeta() {
