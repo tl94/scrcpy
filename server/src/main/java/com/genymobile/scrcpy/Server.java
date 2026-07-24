@@ -258,7 +258,15 @@ public final class Server {
             } else if (options.getServerType() == ServerType.WEB_SOCKET) {
                 WSServer wsServer = new WSServer(options);
                 wsServer.setReuseAddr(true);
-                wsServer.run();
+                Thread wsServerThread = new Thread(() -> {
+                    try {
+                        wsServer.run();
+                    } catch (Exception e) {
+                        Ln.e("WSServer died: " + e);
+                    }
+                }, "ws-server-thread");
+                wsServerThread.start();
+                Looper.loop();
             }
         } catch (ConfigurationException e) {
             // Do not print stack trace, a user-friendly error-message has already been logged
