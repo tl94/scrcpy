@@ -33,6 +33,8 @@ public class WebSocketConnection extends Connection {
     private static final int PIPE_SIZE = 64 * 1024;
     private static final byte[] DEVICE_NAME_BYTES = Device.getDeviceName().getBytes(StandardCharsets.UTF_8);
     private static final long PACKET_FLAG_CONFIG = 1L << 63;
+    private static final long PACKET_FLAG_KEY_FRAME = 1L << 62;
+    private final boolean wsAggregateStream;
     private final HashSet<WebSocket> sockets = new HashSet<>();
 
     private final ParcelFileDescriptor videoPipeRead, videoPipeWrite;
@@ -46,13 +48,16 @@ public class WebSocketConnection extends Connection {
 
     // stream cache
     private byte[] cachedVideoCodecHeader;
-    private ByteBuffer cachedVideoStreamPacket;
+    private ByteBuffer cachedVideoConfigPacket;
+    private ByteBuffer cachedVideoKeyFrame;
     private ByteBuffer cachedAudioCodecHeader;
     private ByteBuffer cachedAudioStreamPacket;
 
 
     public WebSocketConnection(Options options, VideoSettings videoSettings) throws IOException {
         this.videoSettings = videoSettings;
+
+        this.wsAggregateStream = options.getWsAggregateStream();
 
         if (options.getVideo()) {
             ParcelFileDescriptor[] videoPipe = ParcelFileDescriptor.createPipe();
@@ -135,19 +140,34 @@ public class WebSocketConnection extends Connection {
                     byte[] packetData = new byte[size];
                     dis.readFully(packetData);
 
-
+                    ByteBuffer buffer;
                     // 4. Add channel type byte
-                    ByteBuffer buffer = ByteBuffer.allocate(1 + size);
-                    buffer.put(CHANNEL_VIDEO);
-                    buffer.put(packetData);
-                    buffer.rewind();
+                    if (wsAggregateStream) {
+                        buffer = ByteBuffer.allocate(1 + 8 + size);
+                        buffer.put(CHANNEL_VIDEO);
+                        buffer.putLong(pts);
+                        buffer.put(packetData);
+                        buffer.rewind();
+                    } else {
+                        buffer = ByteBuffer.allocate(1 + size);
+                        buffer.put(CHANNEL_VIDEO);
+                        buffer.put(packetData);
+                        buffer.rewind();
+                    }
 
-                    // cache last video stream packet
+                    // cache video config packet
                     if ((pts & PACKET_FLAG_CONFIG) != 0) {
                         synchronized (sockets) {
-                            cachedVideoStreamPacket = buffer;
+                            Ln.d("updated cached video config");
+                            cachedVideoConfigPacket = buffer;
                         }
                     }
+//                    else if ((pts & PACKET_FLAG_KEY_FRAME) != 0) {
+//                        synchronized (sockets) {
+//                            Ln.d("updated cached key frame");
+//                            cachedVideoKeyFrame = buffer;
+//                        }
+//                    }
 
                     // broadcast video packet
                     broadcast(buffer);
@@ -281,8 +301,11 @@ public class WebSocketConnection extends Connection {
         Ln.d("Adding new socket");
         synchronized (sockets) {
             // Send the most recent SPS/PPS so the browser can start immediately
-            if (cachedVideoStreamPacket != null) {
-                socket.send(cachedVideoStreamPacket.duplicate());
+            if (cachedVideoConfigPacket != null) {
+                socket.send(cachedVideoConfigPacket.duplicate());
+            }
+            if (cachedVideoKeyFrame != null) {
+                socket.send(cachedVideoKeyFrame.duplicate());
             }
             if (cachedAudioCodecHeader != null) {
                 socket.send(cachedAudioCodecHeader.duplicate());

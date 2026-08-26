@@ -83,6 +83,7 @@ public class Options {
     private boolean sendCodecMeta = true; // write the codec metadata before the stream
 
     private boolean wsClipboardAutosync = false;
+    private boolean wsAggregateStream = false;
 
     @SuppressWarnings("MethodLength")
     public static Options parse(String... args) {
@@ -327,6 +328,9 @@ public class Options {
                 // ws-scrcpy-specific
                 case "ws_clipboard_autosync":
                     options.wsClipboardAutosync = Boolean.parseBoolean(value);
+                    break;
+                case "ws_aggregate_stream":
+                    options.wsAggregateStream = Boolean.parseBoolean(value);
                     break;
                 default:
                     Ln.w("Unknown server option: " + key);
@@ -685,6 +689,10 @@ public class Options {
 
     public boolean getWsClipboardAutosync() {
         return wsClipboardAutosync;
+    }
+
+    public boolean getWsAggregateStream() {
+        return wsAggregateStream;
     }
 
     public boolean getSendDeviceMeta() {
