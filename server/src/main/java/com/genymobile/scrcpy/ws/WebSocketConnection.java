@@ -102,7 +102,11 @@ public class WebSocketConnection extends Connection {
 
     private void startBroadcastThreads() {
         if (videoPipeRead != null) {
-            startVideoBroadcastThread(videoPipeRead, "ws-video");
+            if (wsAggregateStream) {
+                startWsAggregateVideoBroadcastThread(videoPipeRead, "ws-aggregate-video");
+            } else {
+                startVideoBroadcastThread(videoPipeRead, "ws-video");
+            }
         }
         if (audioPipeRead != null) {
             startAudioBroadcastThread(audioPipeRead, "ws-audio");
@@ -141,19 +145,12 @@ public class WebSocketConnection extends Connection {
                     dis.readFully(packetData);
 
                     ByteBuffer buffer;
+
                     // 4. Add channel type byte
-                    if (wsAggregateStream) {
-                        buffer = ByteBuffer.allocate(1 + 8 + size);
-                        buffer.put(CHANNEL_VIDEO);
-                        buffer.putLong(pts);
-                        buffer.put(packetData);
-                        buffer.rewind();
-                    } else {
-                        buffer = ByteBuffer.allocate(1 + size);
-                        buffer.put(CHANNEL_VIDEO);
-                        buffer.put(packetData);
-                        buffer.rewind();
-                    }
+                    buffer = ByteBuffer.allocate(1 + size);
+                    buffer.put(CHANNEL_VIDEO);
+                    buffer.put(packetData);
+                    buffer.rewind();
 
                     // cache video config packet
                     if ((pts & PACKET_FLAG_CONFIG) != 0) {
@@ -162,12 +159,61 @@ public class WebSocketConnection extends Connection {
                             cachedVideoConfigPacket = buffer;
                         }
                     }
-//                    else if ((pts & PACKET_FLAG_KEY_FRAME) != 0) {
-//                        synchronized (sockets) {
-//                            Ln.d("updated cached key frame");
-//                            cachedVideoKeyFrame = buffer;
-//                        }
-//                    }
+
+                    // broadcast video packet
+                    broadcast(buffer);
+                }
+            } catch (IOException e) {
+                Ln.d("Video stream closed");
+                Ln.e(e.getMessage());
+            }
+        }, name).start();
+    }
+
+    private void startWsAggregateVideoBroadcastThread(ParcelFileDescriptor pfd, String name) {
+        new Thread(() -> {
+            try (DataInputStream dis = new DataInputStream(new FileInputStream(pfd.getFileDescriptor()))) {
+                // 1. Read the Initial Codec Header (12 bytes)
+                // [Codec ID (4)][Width (4)][Height (4)]
+                byte[] codecHeader = new byte[12];
+                dis.readFully(codecHeader);
+
+                // cache video codec header
+                synchronized (sockets) {
+                    cachedVideoCodecHeader = codecHeader;
+                }
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    // 2. Read the Frame Metadata (12 bytes)
+                    // [PTS (8)][Size (4)]
+                    long pts = dis.readLong();
+                    int size = dis.readInt();
+
+                    // SAFETY CHECK: If size is > 10MB, we've definitely lost sync.
+                    if (size < 0 || size > 10 * 1024 * 1024) {
+                        throw new IOException("Invalid video packet size: " + size + ". Stream desynchronized!");
+                    }
+
+                    // 3. Read the exact number of bytes for the video packet
+                    byte[] packetData = new byte[size];
+                    dis.readFully(packetData);
+
+                    ByteBuffer buffer;
+
+                    // 4. Add channel type byte
+                    buffer = ByteBuffer.allocate(1 + 8 + size);
+                    buffer.put(CHANNEL_VIDEO);
+                    buffer.putLong(pts);
+                    buffer.put(packetData);
+                    buffer.rewind();
+
+                    // cache video config packet
+                    if ((pts & PACKET_FLAG_CONFIG) != 0) {
+                        synchronized (sockets) {
+                            Ln.d("updated cached video config");
+                            cachedVideoConfigPacket = buffer;
+                        }
+                    }
 
                     // broadcast video packet
                     broadcast(buffer);
