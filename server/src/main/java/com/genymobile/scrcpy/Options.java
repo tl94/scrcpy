@@ -6,10 +6,10 @@ import android.util.Pair;
 import com.genymobile.scrcpy.audio.AudioCodec;
 import com.genymobile.scrcpy.audio.AudioSource;
 import com.genymobile.scrcpy.device.Device;
-import com.genymobile.scrcpy.device.NewDisplay;
-import com.genymobile.scrcpy.device.Orientation;
-import com.genymobile.scrcpy.device.Size;
-import com.genymobile.scrcpy.util.CodecOption;
+import com.genymobile.scrcpy.model.CodecOption;
+import com.genymobile.scrcpy.model.NewDisplay;
+import com.genymobile.scrcpy.model.Orientation;
+import com.genymobile.scrcpy.model.Size;
 import com.genymobile.scrcpy.util.Ln;
 import com.genymobile.scrcpy.video.CameraAspectRatio;
 import com.genymobile.scrcpy.video.CameraFacing;
@@ -26,6 +26,7 @@ public class Options {
     private boolean video = true;
     private boolean audio = true;
     private int maxSize;
+    private int minSizeAlignment = 1;
     private VideoCodec videoCodec = VideoCodec.H264;
     private AudioCodec audioCodec = AudioCodec.OPUS;
     private VideoSource videoSource = VideoSource.DISPLAY;
@@ -43,8 +44,10 @@ public class Options {
     private Size cameraSize;
     private CameraFacing cameraFacing;
     private CameraAspectRatio cameraAspectRatio;
+    private float cameraZoom = 1;
     private int cameraFps;
     private boolean cameraHighSpeed;
+    private boolean cameraTorch;
     private boolean showTouches = false;
     private boolean stayAwake = false;
     private int screenOffTimeout = -1;
@@ -66,6 +69,10 @@ public class Options {
     private NewDisplay newDisplay;
     private boolean vdDestroyContent = true;
     private boolean vdSystemDecorations = true;
+    private boolean flexDisplay;
+
+    private boolean keepActive;
+    private boolean ignoreVideoEncoderConstraints;
 
     private Orientation.Lock captureOrientationLock = Orientation.Lock.Unlocked;
     private Orientation captureOrientation = Orientation.Orient0;
@@ -80,10 +87,247 @@ public class Options {
     private boolean sendDeviceMeta = true; // send device name and size
     private boolean sendFrameMeta = true; // send PTS so that the client may record properly
     private boolean sendDummyByte = true; // write a byte on start to detect connection issues
-    private boolean sendCodecMeta = true; // write the codec metadata before the stream
+    private boolean sendCodecMeta = true;
+    private boolean sendStreamMeta = true; // write the stream metadata (codec and session)
 
     private boolean wsClipboardAutosync = false;
     private boolean wsAggregateStream = false;
+
+    public Ln.Level getLogLevel() {
+        return logLevel;
+    }
+
+    public int getScid() {
+        return scid;
+    }
+
+    public boolean getVideo() {
+        return video;
+    }
+
+    public boolean getAudio() {
+        return audio;
+    }
+
+    public int getMaxSize() {
+        return maxSize;
+    }
+
+    public int getMinSizeAlignment() {
+        return minSizeAlignment;
+    }
+
+    public VideoCodec getVideoCodec() {
+        return videoCodec;
+    }
+
+    public AudioCodec getAudioCodec() {
+        return audioCodec;
+    }
+
+    public VideoSource getVideoSource() {
+        return videoSource;
+    }
+
+    public AudioSource getAudioSource() {
+        return audioSource;
+    }
+
+    public boolean getAudioDup() {
+        return audioDup;
+    }
+
+    public int getVideoBitRate() {
+        return videoBitRate;
+    }
+
+    public int getAudioBitRate() {
+        return audioBitRate;
+    }
+
+    public float getMaxFps() {
+        return maxFps;
+    }
+
+    public float getAngle() {
+        return angle;
+    }
+
+    public boolean isTunnelForward() {
+        return tunnelForward;
+    }
+
+    public Rect getCrop() {
+        return crop;
+    }
+
+    public boolean getControl() {
+        return control;
+    }
+
+    public int getDisplayId() {
+        return displayId;
+    }
+
+    public String getCameraId() {
+        return cameraId;
+    }
+
+    public Size getCameraSize() {
+        return cameraSize;
+    }
+
+    public CameraFacing getCameraFacing() {
+        return cameraFacing;
+    }
+
+    public CameraAspectRatio getCameraAspectRatio() {
+        return cameraAspectRatio;
+    }
+
+    public float getCameraZoom() {
+        return cameraZoom;
+    }
+
+    public int getCameraFps() {
+        return cameraFps;
+    }
+
+    public boolean getCameraHighSpeed() {
+        return cameraHighSpeed;
+    }
+
+    public boolean getCameraTorch() {
+        return cameraTorch;
+    }
+
+    public boolean getShowTouches() {
+        return showTouches;
+    }
+
+    public boolean getStayAwake() {
+        return stayAwake;
+    }
+
+    public int getScreenOffTimeout() {
+        return screenOffTimeout;
+    }
+
+    public int getDisplayImePolicy() {
+        return displayImePolicy;
+    }
+
+    public List<CodecOption> getVideoCodecOptions() {
+        return videoCodecOptions;
+    }
+
+    public List<CodecOption> getAudioCodecOptions() {
+        return audioCodecOptions;
+    }
+
+    public String getVideoEncoder() {
+        return videoEncoder;
+    }
+
+    public String getAudioEncoder() {
+        return audioEncoder;
+    }
+
+    public boolean getPowerOffScreenOnClose() {
+        return this.powerOffScreenOnClose;
+    }
+
+    public boolean getClipboardAutosync() {
+        return clipboardAutosync;
+    }
+
+    public boolean getDownsizeOnError() {
+        return downsizeOnError;
+    }
+
+    public boolean getCleanup() {
+        return cleanup;
+    }
+
+    public boolean getPowerOn() {
+        return powerOn;
+    }
+
+    public NewDisplay getNewDisplay() {
+        return newDisplay;
+    }
+
+    public Orientation getCaptureOrientation() {
+        return captureOrientation;
+    }
+
+    public Orientation.Lock getCaptureOrientationLock() {
+        return captureOrientationLock;
+    }
+
+    public boolean getVDDestroyContent() {
+        return vdDestroyContent;
+    }
+
+    public boolean getVDSystemDecorations() {
+        return vdSystemDecorations;
+    }
+
+    public boolean getKeepActive() {
+        return keepActive;
+    }
+
+    public boolean getFlexDisplay() {
+        return flexDisplay;
+    }
+
+    public boolean getIgnoreVideoEncoderConstraints() {
+        return ignoreVideoEncoderConstraints;
+    }
+
+    public boolean getList() {
+        return listEncoders || listDisplays || listCameras || listCameraSizes || listApps;
+    }
+
+    public boolean getListEncoders() {
+        return listEncoders;
+    }
+
+    public boolean getListDisplays() {
+        return listDisplays;
+    }
+
+    public boolean getListCameras() {
+        return listCameras;
+    }
+
+    public boolean getListCameraSizes() {
+        return listCameraSizes;
+    }
+
+    public boolean getListApps() {
+        return listApps;
+    }
+
+    public boolean getSendDeviceMeta() {
+        return sendDeviceMeta;
+    }
+
+    public boolean getSendFrameMeta() {
+        return sendFrameMeta;
+    }
+
+    public boolean getSendDummyByte() {
+        return sendDummyByte;
+    }
+
+    public boolean getSendStreamMeta() {
+        return sendStreamMeta;
+    }
+
+    public boolean getSendCodecMeta() {
+        return sendCodecMeta;
+    }
 
     @SuppressWarnings("MethodLength")
     public static Options parse(String... args) {
@@ -157,6 +401,13 @@ public class Options {
                     break;
                 case "max_size":
                     options.maxSize = Integer.parseInt(value) & ~7; // multiple of 8
+                    break;
+                case "min_size_alignment":
+                    int align = Integer.parseInt(value);
+                    if (align < 1 || align > 16 || (align & (align - 1)) != 0) {
+                        throw new IllegalArgumentException("min_size_alignment (" + align + ") must be 1, 2, 4, 8 or 16");
+                    }
+                    options.minSizeAlignment = align;
                     break;
                 case "video_bit_rate":
                     options.videoBitRate = Integer.parseInt(value);
@@ -281,11 +532,19 @@ public class Options {
                         options.cameraAspectRatio = parseCameraAspectRatio(value);
                     }
                     break;
+                case "camera_zoom":
+                    if (!value.isEmpty()) {
+                        options.cameraZoom = Float.parseFloat(value);
+                    }
+                    break;
                 case "camera_fps":
                     options.cameraFps = Integer.parseInt(value);
                     break;
                 case "camera_high_speed":
                     options.cameraHighSpeed = Boolean.parseBoolean(value);
+                    break;
+                case "camera_torch":
+                    options.cameraTorch = Boolean.parseBoolean(value);
                     break;
                 case "new_display":
                     options.newDisplay = parseNewDisplay(value);
@@ -296,6 +555,9 @@ public class Options {
                 case "vd_system_decorations":
                     options.vdSystemDecorations = Boolean.parseBoolean(value);
                     break;
+                case "flex_display":
+                    options.flexDisplay = Boolean.parseBoolean(value);
+                    break;
                 case "capture_orientation":
                     Pair<Orientation.Lock, Orientation> pair = parseCaptureOrientation(value);
                     options.captureOrientationLock = pair.first;
@@ -303,6 +565,12 @@ public class Options {
                     break;
                 case "display_ime_policy":
                     options.displayImePolicy = parseDisplayImePolicy(value);
+                    break;
+                case "keep_active":
+                    options.keepActive = Boolean.parseBoolean(value);
+                    break;
+                case "ignore_video_encoder_constraints":
+                    options.ignoreVideoEncoderConstraints = Boolean.parseBoolean(value);
                     break;
                 case "send_device_meta":
                     options.sendDeviceMeta = Boolean.parseBoolean(value);
@@ -313,8 +581,8 @@ public class Options {
                 case "send_dummy_byte":
                     options.sendDummyByte = Boolean.parseBoolean(value);
                     break;
-                case "send_codec_meta":
-                    options.sendCodecMeta = Boolean.parseBoolean(value);
+                case "send_stream_meta":
+                    options.sendStreamMeta = Boolean.parseBoolean(value);
                     break;
                 case "raw_stream":
                     boolean rawStream = Boolean.parseBoolean(value);
@@ -322,7 +590,7 @@ public class Options {
                         options.sendDeviceMeta = false;
                         options.sendFrameMeta = false;
                         options.sendDummyByte = false;
-                        options.sendCodecMeta = false;
+                        options.sendStreamMeta = false;
                     }
                     break;
                 // ws-scrcpy-specific
@@ -469,138 +737,6 @@ public class Options {
         }
     }
 
-    public Ln.Level getLogLevel() {
-        return logLevel;
-    }
-
-    public int getScid() {
-        return scid;
-    }
-
-    public boolean getVideo() {
-        return video;
-    }
-
-    public boolean getAudio() {
-        return audio;
-    }
-
-    public int getMaxSize() {
-        return maxSize;
-    }
-
-    public VideoCodec getVideoCodec() {
-        return videoCodec;
-    }
-
-    public AudioCodec getAudioCodec() {
-        return audioCodec;
-    }
-
-    public VideoSource getVideoSource() {
-        return videoSource;
-    }
-
-    public AudioSource getAudioSource() {
-        return audioSource;
-    }
-
-    public boolean getAudioDup() {
-        return audioDup;
-    }
-
-    public int getVideoBitRate() {
-        return videoBitRate;
-    }
-
-    public int getAudioBitRate() {
-        return audioBitRate;
-    }
-
-    public float getMaxFps() {
-        return maxFps;
-    }
-
-    public float getAngle() {
-        return angle;
-    }
-
-    public boolean isTunnelForward() {
-        return tunnelForward;
-    }
-
-    public Rect getCrop() {
-        return crop;
-    }
-
-    public boolean getControl() {
-        return control;
-    }
-
-    public int getDisplayId() {
-        return displayId;
-    }
-
-    public String getCameraId() {
-        return cameraId;
-    }
-
-    public Size getCameraSize() {
-        return cameraSize;
-    }
-
-    public CameraFacing getCameraFacing() {
-        return cameraFacing;
-    }
-
-    public CameraAspectRatio getCameraAspectRatio() {
-        return cameraAspectRatio;
-    }
-
-    public int getCameraFps() {
-        return cameraFps;
-    }
-
-    public boolean getCameraHighSpeed() {
-        return cameraHighSpeed;
-    }
-
-    public boolean getShowTouches() {
-        return showTouches;
-    }
-
-    public boolean getStayAwake() {
-        return stayAwake;
-    }
-
-    public int getScreenOffTimeout() {
-        return screenOffTimeout;
-    }
-
-    public int getDisplayImePolicy() {
-        return displayImePolicy;
-    }
-
-    public List<CodecOption> getVideoCodecOptions() {
-        return videoCodecOptions;
-    }
-
-    public List<CodecOption> getAudioCodecOptions() {
-        return audioCodecOptions;
-    }
-
-    public String getVideoEncoder() {
-        return videoEncoder;
-    }
-
-    public String getAudioEncoder() {
-        return audioEncoder;
-    }
-
-    public boolean getPowerOffScreenOnClose() {
-        return this.powerOffScreenOnClose;
-    }
-
     public ServerType getServerType() {
         return this.serverType;
     }
@@ -627,88 +763,12 @@ public class Options {
         this.listenOnAllInterfaces = listenOnAllInterfaces;
     }
 
-    public boolean getClipboardAutosync() {
-        return clipboardAutosync;
-    }
-
-    public boolean getDownsizeOnError() {
-        return downsizeOnError;
-    }
-
-    public boolean getCleanup() {
-        return cleanup;
-    }
-
-    public boolean getPowerOn() {
-        return powerOn;
-    }
-
-    public NewDisplay getNewDisplay() {
-        return newDisplay;
-    }
-
-    public Orientation getCaptureOrientation() {
-        return captureOrientation;
-    }
-
-    public Orientation.Lock getCaptureOrientationLock() {
-        return captureOrientationLock;
-    }
-
-    public boolean getVDDestroyContent() {
-        return vdDestroyContent;
-    }
-
-    public boolean getVDSystemDecorations() {
-        return vdSystemDecorations;
-    }
-
-    public boolean getList() {
-        return listEncoders || listDisplays || listCameras || listCameraSizes || listApps;
-    }
-
-    public boolean getListEncoders() {
-        return listEncoders;
-    }
-
-    public boolean getListDisplays() {
-        return listDisplays;
-    }
-
-    public boolean getListCameras() {
-        return listCameras;
-    }
-
-    public boolean getListCameraSizes() {
-        return listCameraSizes;
-    }
-
-    public boolean getListApps() {
-        return listApps;
-    }
-
     public boolean getWsClipboardAutosync() {
         return wsClipboardAutosync;
     }
 
     public boolean getWsAggregateStream() {
         return wsAggregateStream;
-    }
-
-    public boolean getSendDeviceMeta() {
-        return sendDeviceMeta;
-    }
-
-    public boolean getSendFrameMeta() {
-        return sendFrameMeta;
-    }
-
-    public boolean getSendDummyByte() {
-        return sendDummyByte;
-    }
-
-    public boolean getSendCodecMeta() {
-        return sendCodecMeta;
     }
 
     @Override

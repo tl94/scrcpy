@@ -1,6 +1,6 @@
 package com.genymobile.scrcpy.control;
 
-import com.genymobile.scrcpy.device.Position;
+import com.genymobile.scrcpy.model.Position;
 import com.genymobile.scrcpy.util.AndroidApiCompatibilityUtils;
 import com.genymobile.scrcpy.util.Binary;
 import com.genymobile.scrcpy.util.Ln;
@@ -15,9 +15,10 @@ import java.nio.charset.StandardCharsets;
 
 public class ControlMessageReader {
 
-    public static final int INJECT_TEXT_MAX_LENGTH = 300;
     private static final int MESSAGE_MAX_SIZE = 1 << 18; // 256k
     public static final int CLIPBOARD_TEXT_MAX_LENGTH = MESSAGE_MAX_SIZE - 14; // type: 1 byte; sequence: 8 bytes; paste flag: 1 byte; length: 4 bytes
+    public static final int INJECT_TEXT_MAX_LENGTH = 300;
+
     private final DataInputStream dis;
 
     public ControlMessageReader(InputStream rawInputStream) {
@@ -60,6 +61,8 @@ public class ControlMessageReader {
             case ControlMessage.TYPE_ROTATE_DEVICE:
             case ControlMessage.TYPE_OPEN_HARD_KEYBOARD_SETTINGS:
             case ControlMessage.TYPE_RESET_VIDEO:
+            case ControlMessage.TYPE_CAMERA_ZOOM_IN:
+            case ControlMessage.TYPE_CAMERA_ZOOM_OUT:
                 return ControlMessage.createEmpty(type);
             case ControlMessage.TYPE_UHID_CREATE:
                 return parseUhidCreate();
@@ -69,6 +72,12 @@ public class ControlMessageReader {
                 return parseUhidDestroy();
             case ControlMessage.TYPE_START_APP:
                 return parseStartApp();
+            case ControlMessage.TYPE_CAMERA_SET_TORCH:
+                return parseCameraSetTorch();
+            case ControlMessage.TYPE_RESIZE_DISPLAY:
+                return parseResizeDisplay();
+            case ControlMessage.TYPE_SCAN_FILE:
+                return parseScanFile();
             case ControlMessage.TYPE_CHANGE_STREAM_PARAMETERS:
                 return parseChangeStreamParameters();
             case ControlMessage.TYPE_PUSH_FILE:
@@ -181,6 +190,22 @@ public class ControlMessageReader {
     private ControlMessage parseStartApp() throws IOException {
         String name = parseString(1);
         return ControlMessage.createStartApp(name);
+    }
+
+    private ControlMessage parseCameraSetTorch() throws IOException {
+        boolean on = dis.readBoolean();
+        return ControlMessage.createCameraSetTorch(on);
+    }
+
+    private ControlMessage parseResizeDisplay() throws IOException {
+        int width = dis.readUnsignedShort();
+        int height = dis.readUnsignedShort();
+        return ControlMessage.createResizeDisplay(width, height);
+    }
+
+    private ControlMessage parseScanFile() throws IOException {
+        String path = parseString();
+        return ControlMessage.createScanFile(path);
     }
 
     private Position parsePosition() throws IOException {

@@ -1,6 +1,6 @@
 package com.genymobile.scrcpy.control;
 
-import com.genymobile.scrcpy.device.Position;
+import com.genymobile.scrcpy.model.Position;
 import com.genymobile.scrcpy.util.Ln;
 import com.genymobile.scrcpy.video.VideoSettings;
 
@@ -30,6 +30,11 @@ public final class ControlMessage {
     public static final int TYPE_OPEN_HARD_KEYBOARD_SETTINGS = 15;
     public static final int TYPE_START_APP = 16;
     public static final int TYPE_RESET_VIDEO = 17;
+    public static final int TYPE_CAMERA_SET_TORCH = 18;
+    public static final int TYPE_CAMERA_ZOOM_IN = 19;
+    public static final int TYPE_CAMERA_ZOOM_OUT = 20;
+    public static final int TYPE_RESIZE_DISPLAY = 21;
+    public static final int TYPE_SCAN_FILE = 22;
     public static final int TYPE_CHANGE_STREAM_PARAMETERS = 101;
     public static final int TYPE_PUSH_FILE = 102;
 
@@ -68,6 +73,9 @@ public final class ControlMessage {
     private boolean on;
     private int vendorId;
     private int productId;
+    private int width;
+    private int height;
+
     //  Video settings
     private VideoSettings videoSettings;
     //  File push
@@ -99,7 +107,7 @@ public final class ControlMessage {
     }
 
     public static ControlMessage createInjectTouchEvent(int action, long pointerId, Position position, float pressure, int actionButton,
-                                                        int buttons) {
+            int buttons) {
         ControlMessage msg = new ControlMessage();
         msg.type = TYPE_INJECT_TOUCH_EVENT;
         msg.action = action;
@@ -189,6 +197,29 @@ public final class ControlMessage {
         msg.text = name;
         return msg;
     }
+
+    public static ControlMessage createCameraSetTorch(boolean on) {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_CAMERA_SET_TORCH;
+        msg.on = on;
+        return msg;
+    }
+
+    public static ControlMessage createResizeDisplay(int width, int height) {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_RESIZE_DISPLAY;
+        msg.width = width;
+        msg.height = height;
+        return msg;
+    }
+
+    public static ControlMessage createScanFile(String path) {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_SCAN_FILE;
+        msg.text = path;
+        return msg;
+    }
+
 
     public static ControlMessage createChangeStreamParameters(byte[] videoSettingsBytes) {
         ControlMessage msg = new ControlMessage();
@@ -315,6 +346,14 @@ public final class ControlMessage {
 
     public int getProductId() {
         return productId;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
     }
 
     public VideoSettings getVideoSettings() {

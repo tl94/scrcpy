@@ -2,8 +2,8 @@ package com.genymobile.scrcpy.video;
 
 import android.graphics.Rect;
 
-import com.genymobile.scrcpy.device.Size;
-import com.genymobile.scrcpy.util.CodecOption;
+import com.genymobile.scrcpy.model.Size;
+import com.genymobile.scrcpy.model.CodecOption;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

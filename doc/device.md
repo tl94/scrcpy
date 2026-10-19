@@ -3,6 +3,17 @@
 Some command line arguments perform actions on the device itself while scrcpy is
 running.
 
+
+## Keep active
+
+To prevent the device from turning off due to inactivity, `--keep-active`
+periodically signals user activity to the system:
+
+```bash
+scrcpy --keep-active
+```
+
+
 ## Stay awake
 
 To prevent the device from sleeping after a delay **when the device is plugged
@@ -25,7 +36,7 @@ changed manually:
 
 
 ```bash
-# get the current show_touches value
+# get the current stay_on_while_plugged_in value
 adb shell settings get global stay_on_while_plugged_in
 # enable for AC/USB/wireless chargers
 adb shell settings put global stay_on_while_plugged_in 7

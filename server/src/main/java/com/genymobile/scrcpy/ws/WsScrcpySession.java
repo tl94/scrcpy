@@ -9,8 +9,8 @@ import com.genymobile.scrcpy.audio.AudioPlaybackCapture;
 import com.genymobile.scrcpy.audio.AudioSource;
 import com.genymobile.scrcpy.control.Controller;
 import com.genymobile.scrcpy.device.Device;
-import com.genymobile.scrcpy.device.NewDisplay;
-import com.genymobile.scrcpy.device.Size;
+import com.genymobile.scrcpy.model.NewDisplay;
+import com.genymobile.scrcpy.model.Size;
 import com.genymobile.scrcpy.device.Streamer;
 import com.genymobile.scrcpy.util.Ln;
 import com.genymobile.scrcpy.video.CameraCapture;
@@ -101,13 +101,6 @@ public class WsScrcpySession {
 
         if (isFirstClient) {
             this.start();
-        } else {
-            Ln.d("requesting new i-frame for new client");
-
-            if (surfaceCapture != null) {
-                videoEncoder.requestSyncFrame();
-                surfaceCapture.requestInvalidate();
-            }
         }
 
         if (listener != null) {
