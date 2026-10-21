@@ -32,8 +32,9 @@ public class WebSocketConnection extends Connection {
     private static final byte CHANNEL_CONTROL = 3;
     private static final int PIPE_SIZE = 64 * 1024;
     private static final byte[] DEVICE_NAME_BYTES = Device.getDeviceName().getBytes(StandardCharsets.UTF_8);
-    private static final long PACKET_FLAG_CONFIG = 1L << 63;
-    private static final long PACKET_FLAG_KEY_FRAME = 1L << 62;
+    private static final long PACKET_FLAG_SESSION = 1L << 63;
+    private static final long PACKET_FLAG_CONFIG = 1L << 62;
+    private static final long PACKET_FLAG_KEY_FRAME = 1L << 61;
     private final boolean wsAggregateStream;
     private final HashSet<WebSocket> sockets = new HashSet<>();
 
@@ -119,9 +120,9 @@ public class WebSocketConnection extends Connection {
     private void startVideoBroadcastThread(ParcelFileDescriptor pfd, String name) {
         new Thread(() -> {
             try (DataInputStream dis = new DataInputStream(new FileInputStream(pfd.getFileDescriptor()))) {
-                // 1. Read the Initial Codec Header (12 bytes)
-                // [Codec ID (4)][Width (4)][Height (4)]
-                byte[] codecHeader = new byte[12];
+                // 1. Read the Initial Codec Header (4 bytes)
+                // [Codec ID (4)]
+                byte[] codecHeader = new byte[4];
                 dis.readFully(codecHeader);
 
                 // cache video codec header
@@ -134,6 +135,15 @@ public class WebSocketConnection extends Connection {
                     // [PTS (8)][Size (4)]
                     long pts = dis.readLong();
                     int size = dis.readInt();
+
+                    if ((pts & PACKET_FLAG_SESSION) != 0) {
+                        // Session packet (12 bytes total: flags + width in pts, height in size)
+                        int width = (int) (pts & 0xFFFFFFFFL);
+                        int height = size;
+                        boolean isClientResize = (pts & 1) != 0;
+                        Ln.d("Video session meta: " + width + "x" + height + ", isClientResize=" + isClientResize);
+                        continue;
+                    }
 
                     // SAFETY CHECK: If size is > 10MB, we've definitely lost sync.
                     if (size < 0 || size > 10 * 1024 * 1024) {
@@ -152,11 +162,16 @@ public class WebSocketConnection extends Connection {
                     buffer.put(packetData);
                     buffer.rewind();
 
-                    // cache video config packet
+                    // cache video config / key frame packet
                     if ((pts & PACKET_FLAG_CONFIG) != 0) {
                         synchronized (sockets) {
                             Ln.d("updated cached video config");
                             cachedVideoConfigPacket = buffer;
+                        }
+                    } else if ((pts & PACKET_FLAG_KEY_FRAME) != 0) {
+                        synchronized (sockets) {
+                            Ln.d("updated cached video key frame");
+                            cachedVideoKeyFrame = buffer;
                         }
                     }
 
@@ -173,9 +188,9 @@ public class WebSocketConnection extends Connection {
     private void startWsAggregateVideoBroadcastThread(ParcelFileDescriptor pfd, String name) {
         new Thread(() -> {
             try (DataInputStream dis = new DataInputStream(new FileInputStream(pfd.getFileDescriptor()))) {
-                // 1. Read the Initial Codec Header (12 bytes)
-                // [Codec ID (4)][Width (4)][Height (4)]
-                byte[] codecHeader = new byte[12];
+                // 1. Read the Initial Codec Header (4 bytes)
+                // [Codec ID (4)]
+                byte[] codecHeader = new byte[4];
                 dis.readFully(codecHeader);
 
                 // cache video codec header
@@ -188,6 +203,15 @@ public class WebSocketConnection extends Connection {
                     // [PTS (8)][Size (4)]
                     long pts = dis.readLong();
                     int size = dis.readInt();
+
+                    if ((pts & PACKET_FLAG_SESSION) != 0) {
+                        // Session packet (12 bytes total: flags + width in pts, height in size)
+                        int width = (int) (pts & 0xFFFFFFFFL);
+                        int height = size;
+                        boolean isClientResize = (pts & 1) != 0;
+                        Ln.d("Video session meta: " + width + "x" + height + ", isClientResize=" + isClientResize);
+                        continue;
+                    }
 
                     // SAFETY CHECK: If size is > 10MB, we've definitely lost sync.
                     if (size < 0 || size > 10 * 1024 * 1024) {
@@ -207,11 +231,16 @@ public class WebSocketConnection extends Connection {
                     buffer.put(packetData);
                     buffer.rewind();
 
-                    // cache video config packet
+                    // cache video config / key frame packet
                     if ((pts & PACKET_FLAG_CONFIG) != 0) {
                         synchronized (sockets) {
                             Ln.d("updated cached video config");
                             cachedVideoConfigPacket = buffer;
+                        }
+                    } else if ((pts & PACKET_FLAG_KEY_FRAME) != 0) {
+                        synchronized (sockets) {
+                            Ln.d("updated cached video key frame");
+                            cachedVideoKeyFrame = buffer;
                         }
                     }
 
